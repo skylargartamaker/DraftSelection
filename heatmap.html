@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Random Date Draw</title>
+
+<style>
+
+body{
+    font-family: Arial;
+    background:#111;
+    color:white;
+    text-align:center;
+}
+
+h1{
+    margin-bottom:5px;
+}
+
+#current{
+    font-size:22px;
+    margin:10px;
+}
+
+.controls{
+    margin-bottom:20px;
+}
+
+.year{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:30px;
+    width:1100px;
+    margin:auto;
+}
+
+.month{
+    background:#1b1b1b;
+    padding:10px;
+    border-radius:8px;
+}
+
+.month h3{
+    margin:5px;
+}
+
+.weekdays{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    font-size:12px;
+}
+
+.days{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:3px;
+}
+
+.day{
+    background:#333;
+    border-radius:4px;
+    font-size:11px;
+    padding:4px;
+    min-height:32px;
+}
+
+.empty{
+    visibility:hidden;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Random Date Draw</h1>
+
+<div id="current">Press Start</div>
+
+<div class="controls">
+<button onclick="startDraw()">Start Draw</button>
+<button onclick="resetCalendar()">Reset</button>
+
+<br><br>
+
+Speed:
+<input type="range" id="speedSlider" min="1" max="200" value="40">
+<span id="speedLabel">40 ms</span>
+
+</div>
+
+<div class="year" id="calendar"></div>
+
+<script>
+
+const TOTAL_DAYS = 366
+
+let drawOrder = []
+let dayElements = {}
+let drawing = false
+
+const slider = document.getElementById("speedSlider")
+const label = document.getElementById("speedLabel")
+
+slider.oninput = () => {
+    label.innerText = slider.value + " ms"
+}
+
+function sleep(ms){
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function shuffle(array){
+    for(let i=array.length-1;i>0;i--){
+        let j=Math.floor(Math.random()*(i+1))
+        ;[array[i],array[j]]=[array[j],array[i]]
+    }
+}
+
+function generateDrawOrder(){
+    drawOrder=[...Array(TOTAL_DAYS).keys()].map(x=>x+1)
+    shuffle(drawOrder)
+}
+
+function getColor(order){
+
+    let r = order/TOTAL_DAYS
+
+    if(r<.33) return "#2ecc71"
+    if(r<.66) return "#f1c40f"
+    return "#e74c3c"
+}
+
+function buildCalendar(){
+
+    const calendar=document.getElementById("calendar")
+
+    for(let m=0;m<12;m++){
+
+        const monthDiv=document.createElement("div")
+        monthDiv.className="month"
+
+        const title=document.createElement("h3")
+        title.innerText=new Date(2024,m,1)
+        .toLocaleString('default',{month:'long'})
+
+        monthDiv.appendChild(title)
+
+        const weekdays=document.createElement("div")
+        weekdays.className="weekdays"
+
+        const names=["Mo","Tu","We","Th","Fr","Sa","Su"]
+
+        names.forEach(n=>{
+            let w=document.createElement("div")
+            w.innerText=n
+            weekdays.appendChild(w)
+        })
+
+        monthDiv.appendChild(weekdays)
+
+        const daysGrid=document.createElement("div")
+        daysGrid.className="days"
+
+        let firstDay=new Date(2024,m,1).getDay()
+        firstDay=(firstDay+6)%7
+
+        for(let i=0;i<firstDay;i++){
+            let empty=document.createElement("div")
+            empty.className="day empty"
+            daysGrid.appendChild(empty)
+        }
+
+        let daysInMonth=new Date(2024,m+1,0).getDate()
+
+        for(let d=1;d<=daysInMonth;d++){
+
+            const date=new Date(2024,m,d)
+
+            const dayOfYear=
+            Math.floor((date-new Date(2024,0,0))/86400000)
+
+            const el=document.createElement("div")
+            el.className="day"
+
+            const dayLabel=document.createElement("div")
+            dayLabel.innerText=d
+
+            const drawLabel=document.createElement("div")
+            drawLabel.innerText="---"
+
+            el.appendChild(dayLabel)
+            el.appendChild(drawLabel)
+
+            daysGrid.appendChild(el)
+
+            dayElements[dayOfYear]={
+                box:el,
+                label:drawLabel
+            }
+        }
+
+        monthDiv.appendChild(daysGrid)
+        calendar.appendChild(monthDiv)
+    }
+}
+
+async function startDraw(){
+
+    if(drawing) return
+    drawing=true
+
+    generateDrawOrder()
+
+    for(let i=0;i<drawOrder.length;i++){
+
+        const day=drawOrder[i]
+        const order=i+1
+
+        const date=new Date(2024,0)
+        date.setDate(day)
+
+        const monthName=date.toLocaleString('default',{month:'long'})
+        const dayNum=date.getDate()
+
+        document.getElementById("current").innerText=
+        `Now Drawing: ${monthName} ${dayNum} (Pick #${order})`
+
+        const el=dayElements[day]
+
+        if(el){
+
+            el.box.style.background=getColor(order)
+            el.label.innerText=order
+        }
+
+        await sleep(parseInt(slider.value))
+    }
+
+    document.getElementById("current").innerText="Drawing Complete"
+    drawing=false
+}
+
+function resetCalendar(){
+    location.reload()
+}
+
+buildCalendar()
+
+</script>
+
+</body>
+</html>
